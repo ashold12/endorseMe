@@ -2,6 +2,12 @@ const puppeteer = require('puppeteer')
 const { login } = require('./config.js')
 const { list } = require('./list.js')
 
+async function asyncForEach(array, callback) {
+  for (let index = 0; index < array.length; index++) {
+    await callback(array[index], index, array);
+  }
+}
+
 let browser = puppeteer.launch({headless: false}) //remove headless on final
   .then(async (browser) => {
     let page = await browser.newPage()
@@ -33,13 +39,21 @@ let browser = puppeteer.launch({headless: false}) //remove headless on final
         return
       }
     console.log('Successful Login')
-    list.forEach(async (userUrl) => {
-      page.goto(userUrl, { waitUntil: "networkidle2" });
+    /* list.forEach(async (userUrl) => { */
+    asyncForEach(list, async (userUrl) => {
+      page.goto(userUrl, { waitUntil: "networkidle0" });
       if (page.url() === 'https://www.linkedin.com/in/unavailable/') return
+      await page.waitFor('div[class="profile-detail"]')
+      console.log('profile details loaded')
+      await page.evaluate(() => {
+        window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})
+      })
       await page.waitFor('button[data-control-name="skill_details"]')
       await page.click('button[data-control-name="skill_details"]')
       page.waitForNavigation();
       await page.evaluate(() => {
+        let skillsDiv = document.getElementById('skill-categories-expanded')
+        skillsDiv.scrollIntoView(true)
         let elements = document.getElementsByClassName('pv-skill-entity__featured-endorse-button-shared')
         for (let x = 0; x < elements.length; x++) {
           elements[x].click()
