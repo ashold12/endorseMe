@@ -44,13 +44,26 @@ let browser = puppeteer.launch({headless: false}) //remove headless on final
       page.goto(userUrl, { waitUntil: "networkidle0" });
       if (page.url() === 'https://www.linkedin.com/in/unavailable/') return
       await page.waitFor('div[class="profile-detail"]')
-      console.log('profile details loaded')
+      console.log('Profile details loaded!')
+      let connection = await page.evaluate(() => {
+        let element = document.querySelector('button[data-control-name="connect"]')
+        return element ? false : true
+      })
+      if (!connection) {
+        console.log('User is not yet connected')
+        return
+      }
+      await page.waitFor(500)
+      await page.evaluate(() => {
+        window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})
+      })
+      await page.waitFor(500)
       await page.evaluate(() => {
         window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})
       })
       await page.waitFor('button[data-control-name="skill_details"]')
+      await page.waitFor(500)
       await page.click('button[data-control-name="skill_details"]')
-      page.waitForNavigation();
       await page.evaluate(() => {
         let skillsDiv = document.getElementById('skill-categories-expanded')
         skillsDiv.scrollIntoView(true)
@@ -60,6 +73,7 @@ let browser = puppeteer.launch({headless: false}) //remove headless on final
         }
       });
     })
+    return
   })
   .catch((err) => {
     console.error(err)
