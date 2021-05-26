@@ -10,6 +10,7 @@ async function asyncForEach(array, callback) {
 
 let browser = puppeteer.launch({headless: false}) //remove headless on final
   .then(async (browser) => {
+    console.log(list)
     let page = await browser.newPage()
     await page.setViewport({
       width: 1280,
@@ -40,7 +41,10 @@ let browser = puppeteer.launch({headless: false}) //remove headless on final
       }
     console.log('Successful Login')
     /* list.forEach(async (userUrl) => { */
-    asyncForEach(list, async (userUrl) => {
+    let failed = []
+    let successes = 0
+    await asyncForEach(list, async (userUrl) => {
+      if (!userUrl) return
       page.goto(userUrl, { waitUntil: "networkidle0" });
       if (page.url() === 'https://www.linkedin.com/in/unavailable/') return
       await page.waitFor('div[class="profile-detail"]')
@@ -51,6 +55,7 @@ let browser = puppeteer.launch({headless: false}) //remove headless on final
       })
       if (!connection) {
         console.log('User is not yet connected')
+        await page.waitFor(1000)
         return
       }
       await page.waitFor(500)
@@ -61,18 +66,43 @@ let browser = puppeteer.launch({headless: false}) //remove headless on final
       await page.evaluate(() => {
         window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})
       })
-      await page.waitFor('button[data-control-name="skill_details"]')
       await page.waitFor(500)
+
+      let buttonPresent = await page.evaluate(() => {
+        let val = document.querySelector('button[data-control-name="skill_details"]')
+        if (val) {
+          val.scrollIntoView()
+          return true
+        }
+        return false
+      })
+      console.log(buttonPresent)
+      if (!buttonPresent) {
+        console.error(`could not locate expand skills button`)
+        failed.push(userUrl)
+        return
+      }
       await page.click('button[data-control-name="skill_details"]')
-      await page.evaluate(() => {
+      let success = await page.evaluate(() => {
         let skillsDiv = document.getElementById('skill-categories-expanded')
-        skillsDiv.scrollIntoView(true)
-        let elements = document.getElementsByClassName('pv-skill-entity__featured-endorse-button-shared')
+        if (skillsDiv) skillsDiv.scrollIntoView(true)
+        else document.querySelector('button[data-control-name="skill_details"]').click()
+        skillsDiv = document.getElementById('skill-categories-expanded')
+        if (skillsDiv) skillsDiv.scrollIntoView(true)
+        else return false
+        let elements = document.getElementsByClassName('pv-skill-entity__featured-endorse-button-shared artdeco-button--secondary')
         for (let x = 0; x < elements.length; x++) {
           elements[x].click()
         }
+        return true
       });
+      await page.waitFor(1000)
+      if (success) successes++
+      else failed.push(userUrl)
+      return
     })
+    console.log(`Successful Endorsements ${successes}`)
+    console.log(`Failed Endorsements ${failed.length} on ${JSON.stringify(failed)}`)
     return
   })
   .catch((err) => {
