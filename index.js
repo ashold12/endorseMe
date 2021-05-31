@@ -8,7 +8,7 @@ async function asyncForEach(array, callback) {
   }
 }
 
-let browser = puppeteer.launch({headless: false}) //remove headless on final
+let browser = puppeteer.launch({headless: false, devtools: true}) //remove headless on final
   .then(async (browser) => {
     console.log(list)
     let page = await browser.newPage()
@@ -58,6 +58,7 @@ let browser = puppeteer.launch({headless: false}) //remove headless on final
         await page.waitFor(1000)
         return
       }
+      /*
       await page.waitFor(500)
       await page.evaluate(() => {
         window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})
@@ -67,17 +68,45 @@ let browser = puppeteer.launch({headless: false}) //remove headless on final
         window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})
       })
       await page.waitFor(500)
-
-      let buttonPresent = await page.evaluate(() => {
-        let val = document.querySelector('button[data-control-name="skill_details"]')
-        if (val) {
-          val.scrollIntoView()
-          return true
+      <<---------------------->>
+      let buttonPresent = await page.evaluate(async() => {
+        let button;
+        let recurse = () => {
+          window.onload = () => {
+            window.scrollTo({top: window.scrollY + 10, behavior: 'smooth'})
+            button = document.querySelector('button[data-control-name="skill_details"]')
+            if (button) return true
+            if (window.scrollY >= document.body.scrollHeight) return false
+            return recurse()
+          }
         }
-        return false
+        return recurse()
       })
-      console.log(buttonPresent)
-      if (!buttonPresent) {
+      */
+      ///////
+      let buttonFound = null
+      let lastScroll = 0
+      while (buttonFound === null) {
+        page.evaluate(() => { window.scrollTo(0, window.scrollY+15) })
+        let buttonPresent = await page.evaluate(() => {
+          return document.querySelector('button[data-control-name="skill_details"]') ? true : false
+        })
+        let scrollFinished = await page.evaluate((lastScroll) => {
+          console.log(`current: ${window.scrollY} last: ${lastScroll}`)
+          let finished = window.scrollY === lastScroll
+          return {finished, lastScroll: window.scrollY}
+        }, lastScroll)
+        lastScroll = scrollFinished.lastScroll
+        if (buttonPresent) {
+          buttonFound = true
+          continue
+        }
+        if (scrollFinished.finished) buttonFound = false
+      }
+
+      console.log(`found button: ${buttonFound}`)
+      console.log('finished search')
+      if (!buttonFound) {
         console.error(`could not locate expand skills button`)
         failed.push(userUrl)
         return
