@@ -1,6 +1,10 @@
+const chalk = require('chalk')
 const puppeteer = require('puppeteer')
-const { login } = require('./config.js')
-const { list } = require('./list.js')
+const clear = require('clear')
+const figlet = require('figlet')
+const inquirer = require ('inquirer')
+// const { login } = require('./config.js')
+// const { list } = require('./list.js')
 
 async function asyncForEach(array, callback) {
   for (let index = 0; index < array.length; index++) {
@@ -10,10 +14,63 @@ async function asyncForEach(array, callback) {
     catch (err) { console.error(err) }
   }
 }
+clear()
+console.log(
+  chalk.yellow(
+    figlet.textSync('EndorseMe', { horizontalLayout: 'full' })
+  )
+);
+console.log(chalk.red('Created by Alexander Shold of RFP51: ') + chalk.red.underline.bold('https://www.linkedin.com/in/alexander-shold/\n\n'))
 
+let promptInfo = async() => inquirer.prompt([
+  {
+    name: 'username',
+    type: 'input',
+    message: 'Enter your LinkedIn e-mail address:',
+    validate: function(value) {
+      const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+      if (re.test(value.toLowerCase())) {
+        return true;
+      } else {
+        return 'Please enter your LinkedIn e-mail address.';
+      }
+    }
+  },
+  {
+    name: 'password',
+    type: 'password',
+    message: 'Enter your password:',
+    validate: function(value) {
+      if (value.length) {
+        return true;
+      } else {
+        return 'Please enter your password.';
+      }
+    }
+  },
+  {
+    name: 'list',
+    type: 'editor',
+    message: 'Enter the url\'s of the users you wish to endorse eparated by line',
+    validate: function(value) {
+      if (value.length) {
+        return true;
+      } else {
+        return 'Please enter your password.';
+      }
+    }
+  }
+]);
+
+
+//process code
 let browser = puppeteer.launch({headless: false, devtools: true}) //remove headless on final
   .then(async (browser) => {
     try {
+      let data = await promptInfo()
+      let { list, username, password } = data
+      list = list.split('\n')
+      let login = {user: username, password}
       console.log(list)
       let page = await browser.newPage()
       await page.setViewport({
