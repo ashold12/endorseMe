@@ -81,7 +81,6 @@ let browser = puppeteer.launch({headless: true}) //remove headless on final
       console.log(`Attemping login.....`)
       let { list, username, password, connect } = data
       connect === 'Yes' ? connect = true : connect = false
-      console.log(connect)
       list = list.split('\n')
       list = list.filter(url => url.length)
       let login = {user: username, password}
