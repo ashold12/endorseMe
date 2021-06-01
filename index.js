@@ -66,7 +66,7 @@ let promptInfo = async() => inquirer.prompt([
       if (value.length) {
         return true;
       } else {
-        return 'Enter the url\'s of the users you wish to endorse eparated by line';
+        return 'Enter the url\'s of the users you wish to endorse separated by line';
       }
     }
   },
@@ -151,7 +151,7 @@ let browser = puppeteer.launch({headless: true}) //remove headless on final
         let buttonFound = null
         let lastScroll = 0
         while (buttonFound === null) {
-          await page.waitForTimeout(10)
+          await page.waitForTimeout(5)
           await page.evaluate(() => { window.scrollTo(0, window.scrollY+10) })
           let buttonPresent = await page.evaluate(() => {
             return document.querySelector('button[data-control-name="skill_details"]') ? true : false
