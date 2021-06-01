@@ -1,10 +1,9 @@
+#!/usr/bin/env node
 const chalk = require('chalk')
 const puppeteer = require('puppeteer')
 const clear = require('clear')
 const figlet = require('figlet')
 const inquirer = require ('inquirer')
-// const { login } = require('./config.js')
-// const { list } = require('./list.js')
 
 async function asyncForEach(array, callback) {
   for (let index = 0; index < array.length; index++) {
@@ -20,7 +19,12 @@ console.log(
     figlet.textSync('EndorseMe', { horizontalLayout: 'full' })
   )
 );
-console.log(chalk.red('Created by Alexander Shold of RFP51: ') + chalk.red.underline.bold('https://www.linkedin.com/in/alexander-shold/\n\n'))
+console.log(
+  chalk.red('Created by Alexander Shold of RFP51:\n') +
+  chalk.red.underline.bold('https://www.linkedin.com/in/alexander-shold/') +
+  chalk.red(' | ') +
+  chalk.red.underline.bold('ashold12@gmail.com\n\n')
+)
 
 let promptInfo = async() => inquirer.prompt([
   {
@@ -49,6 +53,12 @@ let promptInfo = async() => inquirer.prompt([
     }
   },
   {
+    name: 'connect',
+    type: 'list',
+    message: 'Do you want to send a connection request to unconnected users?',
+    choices:['Yes', 'No']
+  },
+  {
     name: 'list',
     type: 'editor',
     message: 'Enter the url\'s of the users you wish to endorse eparated by line',
@@ -56,22 +66,25 @@ let promptInfo = async() => inquirer.prompt([
       if (value.length) {
         return true;
       } else {
-        return 'Please enter your password.';
+        return 'Enter the url\'s of the users you wish to endorse eparated by line';
       }
     }
-  }
+  },
 ]);
 
 
 //process code
-let browser = puppeteer.launch({headless: false, devtools: true}) //remove headless on final
+let browser = puppeteer.launch({headless: true}) //remove headless on final
   .then(async (browser) => {
     try {
       let data = await promptInfo()
-      let { list, username, password } = data
+      console.log(`Attemping login.....`)
+      let { list, username, password, connect } = data
+      connect === 'Yes' ? connect = true : connect = false
+      console.log(connect)
       list = list.split('\n')
+      list = list.filter(url => url.length)
       let login = {user: username, password}
-      console.log(list)
       let page = await browser.newPage()
       await page.setViewport({
         width: 1280,
@@ -79,10 +92,10 @@ let browser = puppeteer.launch({headless: false, devtools: true}) //remove headl
         isMobile: false,
       });
 
-      page.goto("http://linkedin.com", {waitUntil: "networkidle2"});
+      await page.goto("http://linkedin.com", {waitUntil: "networkidle2"});
 
-      await page.waitFor('input[name="session_key"]')
-      await page.waitFor(1000)
+      await page.waitForSelector('input[name="session_key"]')
+      await page.waitForTimeout(1000)
       await page.type('input[name="session_key"]', login.user, {
         delay: 10,
       });
@@ -90,45 +103,60 @@ let browser = puppeteer.launch({headless: false, devtools: true}) //remove headl
         delay: 10,
       });
       await page.click('button[type="submit"]');
-      await page.waitFor(1000)
+      await page.waitForTimeout(1000)
       let url = await page.url()
       if (
         url === 'https://www.linkedin.com/uas/login-submit' ||
         url === 'https://www.linkedin.com/'
         ) {
           console.log('Invalid Login Information')
-          await browser.close()
           return
         }
       console.log('Successful Login')
       /* list.forEach(async (userUrl) => { */
       let failed = []
       let successes = 0
-      await asyncForEach(list, async (userUrl) => {
+      await asyncForEach(list, async (userUrl, index) => {
         if (!userUrl) return
-        page.goto(userUrl, { waitUntil: "networkidle0" });
+        if (!(userUrl.includes('https://') | userUrl.includes('http://'))) userUrl = 'https://' + userUrl
+        await page.goto(userUrl, { waitUntil: "networkidle2" });
         if (page.url() === 'https://www.linkedin.com/in/unavailable/') return
-        await page.waitFor('div[class="profile-detail"]')
-        console.log('Profile details loaded!')
+        await page.waitForSelector('div[class="profile-detail"]')
+        // console.log('Profile details loaded!')
+        let name = await page.title()
+        name = name.substring(0, name.length - 11)
+        console.log(`Serving Profile ${index+1}/${list.length} - ${name}`)
         let connection = await page.evaluate(() => {
-          let element = document.querySelector('button[data-control-name="connect"]')
-          return element ? false : true
+          let notConnected = document.querySelector('button[data-control-name="connect"]')
+          let pending = document.querySelector('button[class="pvs-profile-actions__action artdeco-button artdeco-button--2 artdeco-button--primary artdeco-button--disabled ember-view"]')
+          notConnected ? notConnected = true : notConnected = false
+          pending ? pending = true : pending = false
+          return {notConnected, pending}
         })
-        if (!connection) {
-          console.log('User is not yet connected')
-          await page.waitFor(1000)
+        if (connection.notConnected) {
+          if (!connection.pending && connect) {
+            await page.click('button[data-control-name="connect"]');
+            await page.waitForSelector('button[class="ml1 artdeco-button artdeco-button--3 artdeco-button--primary ember-view"]')
+            await page.click('button[class="ml1 artdeco-button artdeco-button--3 artdeco-button--primary ember-view"]')
+            console.log('User not connected - Connection request sent')
+          } else if (connection.pending) {
+            console.log('User not connected - Connection request pending')
+          } else {
+            console.log('User not connected')
+          }
+          await page.waitForTimeout(1000)
           return
         }
 
         let buttonFound = null
         let lastScroll = 0
         while (buttonFound === null) {
-          page.evaluate(() => { window.scrollTo(0, window.scrollY+15) })
+          await page.waitForTimeout(10)
+          await page.evaluate(() => { window.scrollTo(0, window.scrollY+10) })
           let buttonPresent = await page.evaluate(() => {
             return document.querySelector('button[data-control-name="skill_details"]') ? true : false
           })
           let scrollFinished = await page.evaluate((lastScroll) => {
-            console.log(`current: ${window.scrollY} last: ${lastScroll}`)
             let finished = window.scrollY === lastScroll
             return {finished, lastScroll: window.scrollY}
           }, lastScroll)
@@ -140,8 +168,6 @@ let browser = puppeteer.launch({headless: false, devtools: true}) //remove headl
           if (scrollFinished.finished) buttonFound = false
         }
 
-        console.log(`found button: ${buttonFound}`)
-        console.log('finished search')
         if (!buttonFound) {
           console.error(`could not locate expand skills button`)
           failed.push(userUrl)
@@ -161,13 +187,14 @@ let browser = puppeteer.launch({headless: false, devtools: true}) //remove headl
           }
           return true
         });
-        await page.waitFor(1000)
+        await page.waitForTimeout(1000)
         if (success) successes++
         else failed.push(userUrl)
         return
       })
       console.log(`Successful Endorsements ${successes}`)
-      console.log(`Failed Endorsements ${failed.length} on ${JSON.stringify(failed)}`)
+      console.log(`Failed Endorsements ${failed.length} on:`)
+      failed.forEach(url => console.log(url))
       return
     } catch (err) { console.error(err) }
     finally { await browser.close() }

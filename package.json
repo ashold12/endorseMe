@@ -3,9 +3,20 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "bin": "index.js",
   "scripts": {
-    "start": "node index.js --unhandled-rejections=none",
+    "start": "node index.js --unhandled-rejections=none --trace-warnings",
+    "build": "nexe index.js --target linux-x64",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "pkg": {
+    "assets": [
+      "./node_modules/chalk",
+      "./node_modules/puppeteer",
+      "./node_modules/clear",
+      "./node_modules/figlet",
+      "./node_module/inquirer"
+    ]
   },
   "keywords": [],
   "author": "",
@@ -16,5 +27,9 @@
     "figlet": "^1.5.0",
     "inquirer": "^8.1.0",
     "puppeteer": "^9.1.1"
+  },
+  "devDependencies": {
+    "nexe": "*",
+    "zip-build": "^1.4.0"
   }
 }
