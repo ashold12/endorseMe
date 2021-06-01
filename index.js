@@ -117,7 +117,7 @@ let browser = puppeteer.launch({headless: true}) //remove headless on final
       let successes = 0
       await asyncForEach(list, async (userUrl, index) => {
         if (!userUrl) return
-        if (!(userUrl.includes('https://') | userUrl.includes('http://'))) userUrl = 'https://' + userUrl
+        if (!(userUrl.includes('https://') || userUrl.includes('http://'))) userUrl = 'https://' + userUrl
         await page.goto(userUrl, { waitUntil: "networkidle2" });
         if (page.url() === 'https://www.linkedin.com/in/unavailable/') return
         await page.waitForSelector('div[class="profile-detail"]')
