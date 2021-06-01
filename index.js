@@ -61,7 +61,7 @@ let promptInfo = async() => inquirer.prompt([
   {
     name: 'list',
     type: 'editor',
-    message: 'Enter the url\'s of the users you wish to endorse eparated by line',
+    message: 'Enter the url\'s of the users you wish to endorse separated by line',
     validate: function(value) {
       if (value.length) {
         return true;
